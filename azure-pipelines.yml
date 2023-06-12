@@ -1,0 +1,35 @@
+trigger: none
+
+pool:
+  vmImage: ubuntu-latest
+
+parameters:
+  - name: env
+    type: string
+    default: dev
+    values:
+      - dev
+
+variables:
+- group: assignment-group
+- group: assignment-group-keyvault
+
+stages:
+  - template: "./template/terraform_deployment.yaml"
+    parameters:
+      env: ${{ parameters.env }}
+      admin_username: $(adminusername)
+      admin_password: $(adminpassword)
+      access_key: $(accesskey)
+      backend-rg-name: $(backend-rg-name)
+      backend-storage-name: $(backend-storage-name)
+      backend-container-name: $(backend-container-name)
+      terraform_version: $(terraform_version)
+      backendsubscriptionid: $(backendsubscriptionid)
+
+  - template: "./template/media-wiki-deployment.yaml"
+    parameters:
+      public_ip_name: $(public_ip_name)
+      rg_name: $(rg_name)
+      db-wiki-user-pass: $(db-wiki-user-pass)
+      

@@ -1,0 +1,47 @@
+parameters:
+  - name: public_ip_name
+    type: string
+  - name: rg_name
+    type: string
+  - name: db-wiki-user-pass
+    type: string
+
+stages:
+- stage: Mediawiki_deployment
+  jobs:
+  - job: mediawikideployment
+    steps:
+    - task: AzureCLI@2
+      inputs:
+        azureSubscription: 'ARMSubConnection'
+        scriptType: 'bash'
+        scriptLocation: 'inlineScript'
+        inlineScript: |
+          sudo ls $(System.DefaultWorkingDirectory)/terraform_files/
+          publicip=$(az network public-ip show --name ${{ parameters.public_ip_name }} -g ${{ parameters.rg_name }} --query ipAddress -o tsv)
+          cd $(System.DefaultWorkingDirectory)/ansible_files_redhat8
+          echo "##vso[task.setvariable variable=public_ip_address]$publicip"
+    - task: replacetokens@5
+      inputs:
+        rootDirectory: '$(System.DefaultWorkingDirectory)/ansible_files_redhat8'
+        targetFiles: '**/*'
+        encoding: 'auto'
+        tokenPattern: 'rm'
+        writeBOM: true
+        actionOnMissing: 'warn'
+        keepToken: false
+        actionOnNoFiles: 'continue'
+        enableTransforms: false
+        enableRecursion: false
+        useLegacyPattern: false
+        enableTelemetry: true
+    - task: Bash@3
+      inputs:
+        targetType: 'inline'
+        script: |
+          cat $(System.DefaultWorkingDirectory)/ansible_files_redhat8/inventory
+          cat $(System.DefaultWorkingDirectory)/ansible_files_redhat8/roles/mediawiki/defaults/main.yml
+          sudo add-apt-repository --update ppa:ansible/ansible-2.12
+          sudo apt install ansible -y
+          cd $(System.DefaultWorkingDirectory)/ansible_files_redhat8
+          ansible-playbook mediawiki.yml -i inventory

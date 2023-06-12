@@ -1,0 +1,1 @@
+node01 ansible_host=__public_ip_address__ ansible_connection=ssh ansible_user=__adminusername__ ansible_ssh_pass=__adminpassword__

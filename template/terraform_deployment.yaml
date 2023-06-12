@@ -1,0 +1,75 @@
+parameters:
+    - name: env
+      type: string
+    - name: admin_username
+      type: string
+    - name: admin_password
+      type: string
+    - name: backend-rg-name
+      type: string
+    - name: backend-storage-name
+      type: string
+    - name: backend-container-name
+      type: string
+    - name: access_key
+      type: string
+    - name: terraform_version
+      type: string
+      default: latest
+    - name: backendsubscriptionid
+      type: string
+
+stages:
+- stage: Terraform_validate_and_plan
+  jobs:
+  - job: ValidateAndPlan
+    steps:
+    - task: replacetokens@5
+      inputs:
+        rootDirectory: '$(System.DefaultWorkingDirectory)/terraform_files'
+        targetFiles: '**/*.tf*'
+        encoding: 'auto'
+        tokenPattern: 'rm'
+        writeBOM: true
+        actionOnMissing: 'warn'
+        keepToken: false
+        actionOnNoFiles: 'continue'
+        enableTransforms: false
+        enableRecursion: false
+        useLegacyPattern: false
+        enableTelemetry: true    
+    - task: charleszipp.azure-pipelines-tasks-terraform.azure-pipelines-tasks-terraform-installer.TerraformInstaller@0
+      displayName: 'Installation the terraform'
+      inputs:
+        terraformVersion: ${{ parameters.terraform_version }}
+    - task: TerraformCLI@0
+      inputs:
+        command: 'init'
+        workingDirectory: '$(System.DefaultWorkingDirectory)/terraform_files'
+        backendType: 'azurerm'
+        backendServiceArm: 'ARMSubConnection'
+        backendAzureRmSubscriptionId: '${{ parameters.backendsubscriptionid }}'
+        allowTelemetryCollection: true
+    - task: TerraformCLI@0
+      inputs:
+        command: 'validate'
+        workingDirectory: '$(System.DefaultWorkingDirectory)/terraform_files'
+        allowTelemetryCollection: true
+    - task: TerraformCLI@0
+      inputs:
+        command: 'plan'
+        workingDirectory: '$(System.DefaultWorkingDirectory)/terraform_files'
+        environmentServiceName: 'ARMSubConnection'
+        providerAzureRmSubscriptionId: '${{ parameters.backendsubscriptionid }}'
+        commandOptions: '-var-file "$(System.DefaultWorkingDirectory)/terraform_files/env/${{ parameters.env }}/terraform.tfvars"'
+        allowTelemetryCollection: true
+    - task: TerraformCLI@0
+      inputs:
+        command: 'apply'
+        workingDirectory: '$(System.DefaultWorkingDirectory)/terraform_files'
+        environmentServiceName: 'ARMSubConnection'
+        providerAzureRmSubscriptionId: '${{ parameters.backendsubscriptionid }}'
+        commandOptions: '-var-file "$(System.DefaultWorkingDirectory)/terraform_files/env/${{ parameters.env }}/terraform.tfvars"'
+        allowTelemetryCollection: true
+
+
